@@ -1,15 +1,279 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SAINT BEV — Beat Studio</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  min-height:100vh;
+  background:#0a0a0f;
+  color:#f0f0f0;
+  font-family:'Courier New',monospace;
+  overflow-x:hidden;
+}
 
-const STEPS = 16;
-const DEFAULT_BPM = 90;
+/* HEADER */
+.header {
+  background:linear-gradient(135deg,#1a0a2e 0%,#0d1117 50%,#0a1a0d 100%);
+  padding:16px 20px 0;
+  border-bottom:1px solid #222;
+}
+.header-top { display:flex; align-items:center; gap:12; margin-bottom:14px; }
+.logo-icon {
+  width:40px; height:40px;
+  background:linear-gradient(135deg,#BF5AF2,#FF3B30);
+  border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; flex-shrink:0;
+}
+.logo-name { font-size:20px; font-weight:900; letter-spacing:3px; color:#BF5AF2; }
+.logo-sub { font-size:10px; letter-spacing:4px; color:#666; }
+.tabs { display:flex; gap:0; }
+.tab {
+  background:transparent; color:#666; border:none;
+  padding:8px 18px; font-size:11px; font-family:'Courier New',monospace;
+  font-weight:700; letter-spacing:2px; cursor:pointer;
+  border-radius:6px 6px 0 0; transition:all 0.2s;
+}
+.tab.active { background:#BF5AF2; color:#fff; }
 
+/* MAIN */
+.main { padding:20px 16px; }
+
+/* TRANSPORT */
+.transport {
+  display:flex; align-items:center; gap:12;
+  background:#111; border-radius:10px;
+  padding:12px 16px; border:1px solid #222; margin-bottom:16px;
+}
+.play-btn {
+  width:52px; height:52px; border:none; border-radius:10px;
+  font-size:22px; cursor:pointer; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.2s;
+}
+.play-btn.stopped { background:linear-gradient(135deg,#30D158,#64D2FF); box-shadow:0 0 20px #30D15866; }
+.play-btn.playing { background:linear-gradient(135deg,#FF3B30,#FF9500); box-shadow:0 0 20px #FF3B3066; }
+.bpm-section { flex:1; }
+.bpm-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.bpm-label { font-size:10px; color:#666; letter-spacing:2px; }
+.bpm-value { font-size:18px; font-weight:900; color:#FFD60A; }
+input[type=range] { width:100%; }
+.tap-btn {
+  background:#222; border:1px solid #444; color:#FFD60A;
+  padding:8px 12px; border-radius:8px; cursor:pointer;
+  font-size:10px; font-family:'Courier New',monospace;
+  font-weight:700; letter-spacing:1px; flex-shrink:0;
+}
+
+/* VOL */
+.vol-row {
+  display:flex; align-items:center; gap:10;
+  margin-bottom:16px; padding:0 4px;
+}
+.vol-label { font-size:10px; color:#666; letter-spacing:2px; flex-shrink:0; }
+.vol-val { font-size:12px; color:#BF5AF2; width:30px; text-align:right; }
+
+/* SEQUENCER */
+.seq-nums {
+  display:grid;
+  grid-template-columns:52px repeat(16,1fr);
+  gap:3px; margin-bottom:4px;
+}
+.seq-num {
+  text-align:center; font-size:8px;
+}
+.pad-row {
+  display:grid;
+  grid-template-columns:52px repeat(16,1fr);
+  gap:3px; margin-bottom:4px;
+}
+.pad-label {
+  border-radius:4px; font-size:8px; font-weight:900;
+  letter-spacing:0.5px; cursor:pointer;
+  font-family:'Courier New',monospace;
+  transition:all 0.08s; border:none; padding:0;
+}
+.step-btn {
+  height:32px; border-radius:3px; cursor:pointer;
+  transition:all 0.06s; border:none; padding:0;
+}
+
+/* ACTIONS */
+.actions { display:flex; gap:8px; margin-top:4px; }
+.action-btn {
+  flex:1; border:1px solid #333; background:#1a1a2e;
+  padding:10px 0; border-radius:8px; cursor:pointer;
+  font-size:11px; font-weight:700; letter-spacing:2px;
+  font-family:'Courier New',monospace;
+}
+.running-msg {
+  margin-top:12px; background:#0d1a0d;
+  border:1px solid #30D158; border-radius:8px;
+  padding:8px 12px; font-size:11px; color:#30D158;
+  letter-spacing:1px; text-align:center;
+}
+
+/* YOUTUBE TAB */
+.yt-note { margin-bottom:14px; color:#888; font-size:12px; line-height:1.6; }
+.yt-row { display:flex; gap:8px; margin-bottom:14px; }
+.yt-input {
+  flex:1; background:#111; border:1px solid #333;
+  color:#f0f0f0; padding:10px 12px; border-radius:6px;
+  font-family:'Courier New',monospace; font-size:12px; outline:none;
+}
+.yt-load {
+  background:#FF3B30; border:none; color:#fff;
+  padding:10px 14px; border-radius:6px; cursor:pointer;
+  font-weight:700; font-size:12px; letter-spacing:1px;
+  font-family:'Courier New',monospace;
+}
+.yt-placeholder {
+  background:#111; border:1px dashed #333; border-radius:10px;
+  height:160px; display:flex; align-items:center;
+  justify-content:center; color:#444; font-size:13px;
+}
+.yt-frame { border-radius:10px; overflow:hidden; border:1px solid #333; }
+
+/* UPLOAD TAB */
+.upload-label {
+  display:block; background:linear-gradient(135deg,#1a1a2e,#111);
+  border:2px dashed #BF5AF2; border-radius:12px;
+  padding:30px 20px; text-align:center; cursor:pointer;
+}
+.upload-icon { font-size:32px; margin-bottom:8px; }
+.upload-name { color:#BF5AF2; font-weight:700; letter-spacing:2px; font-size:13px; }
+.upload-sub { color:#555; font-size:11px; margin-top:4px; }
+.detecting {
+  margin-top:14px; background:#111; border-radius:8px;
+  padding:14px; text-align:center; color:#BF5AF2;
+  font-size:13px; letter-spacing:2px;
+}
+.bpm-result {
+  margin-top:14px;
+  background:linear-gradient(135deg,#1a0a2e,#0a1a0d);
+  border:1px solid #BF5AF2; border-radius:10px; padding:16px;
+}
+.bpm-result-label { color:#888; font-size:11px; letter-spacing:2px; margin-bottom:4px; }
+.bpm-result-val { font-size:40px; font-weight:900; color:#BF5AF2; letter-spacing:2px; }
+.bpm-result-unit { font-size:16px; color:#666; }
+.bpm-result-ok { color:#30D158; font-size:12px; margin-top:4px; }
+.bpm-result-tip { color:#666; font-size:11px; margin-top:8px; }
+
+/* HIDDEN TABS */
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top" style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+    <div class="logo-icon">🎤</div>
+    <div>
+      <div class="logo-name">SAINT BEV</div>
+      <div class="logo-sub">SAMPLE BEAT STUDIO</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('beat')">🥁 BEAT</button>
+    <button class="tab" onclick="switchTab('youtube')">▶ YOUTUBE</button>
+    <button class="tab" onclick="switchTab('upload')">🎵 MY TRACK</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- BEAT TAB -->
+  <div id="tab-beat" class="tab-panel active">
+
+    <!-- Transport -->
+    <div class="transport">
+      <button class="play-btn stopped" id="playBtn" onclick="togglePlay()">▶</button>
+      <div class="bpm-section">
+        <div class="bpm-row">
+          <span class="bpm-label">BPM</span>
+          <span class="bpm-value" id="bpmVal">90</span>
+        </div>
+        <input type="range" min="60" max="180" value="90" id="bpmSlider"
+          oninput="setBPM(this.value)" style="accent-color:#FFD60A;">
+      </div>
+      <button class="tap-btn" onclick="tapBPM()">TAP</button>
+    </div>
+
+    <!-- Volume -->
+    <div class="vol-row">
+      <span class="vol-label">VOL</span>
+      <input type="range" min="0" max="100" value="80" id="volSlider"
+        oninput="setVol(this.value)" style="flex:1;accent-color:#BF5AF2;">
+      <span class="vol-val" id="volVal">80</span>
+    </div>
+
+    <!-- Sequencer -->
+    <div id="sequencer"></div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="action-btn" style="color:#64D2FF;" onclick="randomize()">🎲 RANDOMIZE</button>
+      <button class="action-btn" style="color:#FF9500;" onclick="resetPattern()">↺ RESET</button>
+    </div>
+
+    <div id="runningMsg" class="running-msg" style="display:none;">
+      🎤 BEAT RUNNING — START RAPPING
+    </div>
+  </div>
+
+  <!-- YOUTUBE TAB -->
+  <div id="tab-youtube" class="tab-panel">
+    <div class="yt-note">
+      Paste a YouTube link.<br>
+      Play the song alongside your beat.<br>
+      <span style="color:#FF9500;">⚠ Can't rip audio — but you can hear it + rap over your beat.</span>
+    </div>
+    <div class="yt-row">
+      <input class="yt-input" id="ytInput" placeholder="https://youtube.com/watch?v=...">
+      <button class="yt-load" onclick="loadYT()">LOAD</button>
+    </div>
+    <div id="ytContainer" class="yt-placeholder">▶ Paste a YouTube link above</div>
+    <div style="margin-top:10px;color:#666;font-size:11px;line-height:1.8;">
+      💡 TIP: Play YouTube, then tap BEAT tab and hit PLAY to run alongside.
+    </div>
+  </div>
+
+  <!-- UPLOAD TAB -->
+  <div id="tab-upload" class="tab-panel">
+    <div class="yt-note">
+      Upload one of your tracks.<br>
+      It'll detect the BPM so the beat matches your flow.
+    </div>
+    <label class="upload-label">
+      <input type="file" accept="audio/*" onchange="handleUpload(event)" style="display:none;">
+      <div class="upload-icon">🎵</div>
+      <div class="upload-name" id="uploadName">TAP TO UPLOAD YOUR TRACK</div>
+      <div class="upload-sub">MP3, WAV, M4A supported</div>
+    </label>
+    <div id="detectingMsg" class="detecting" style="display:none;">⏳ ANALYZING YOUR FLOW...</div>
+    <div id="bpmResult" class="bpm-result" style="display:none;">
+      <div class="bpm-result-label">DETECTED TEMPO</div>
+      <div class="bpm-result-val"><span id="detectedBpm">--</span> <span class="bpm-result-unit">BPM</span></div>
+      <div class="bpm-result-ok">✓ Beat automatically set to match</div>
+      <div class="bpm-result-tip">Go to BEAT tab and hit PLAY — groove is locked to your flow.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── PADS ──────────────────────────────────────────────────────────────────────
 const PADS = [
-  { id: "kick",  label: "KICK",   color: "#FF3B30", freq: 60,   type: "kick"  },
-  { id: "snare", label: "SNARE",  color: "#FF9500", freq: 200,  type: "snare" },
-  { id: "hihat", label: "HI-HAT", color: "#FFD60A", freq: 800,  type: "hihat" },
-  { id: "clap",  label: "CLAP",   color: "#30D158", freq: 1200, type: "clap"  },
-  { id: "perc",  label: "PERC",   color: "#64D2FF", freq: 400,  type: "perc"  },
-  { id: "bass",  label: "808",    color: "#BF5AF2", freq: 40,   type: "bass"  },
+  { id:"kick",  label:"KICK",   color:"#FF3B30", freq:60,   type:"kick"  },
+  { id:"snare", label:"SNARE",  color:"#FF9500", freq:200,  type:"snare" },
+  { id:"hihat", label:"HI-HAT", color:"#FFD60A", freq:800,  type:"hihat" },
+  { id:"clap",  label:"CLAP",   color:"#30D158", freq:1200, type:"clap"  },
+  { id:"perc",  label:"PERC",   color:"#64D2FF", freq:400,  type:"perc"  },
+  { id:"bass",  label:"808",    color:"#BF5AF2", freq:40,   type:"bass"  },
 ];
 
 const DEFAULT_PATTERN = {
@@ -21,663 +285,345 @@ const DEFAULT_PATTERN = {
   bass:  [1,0,0,0, 0,0,1,0, 0,0,0,0, 1,0,0,0],
 };
 
-// ── Web Audio Drum Synthesis ──────────────────────────────────────────────────
-// FIX: vol parameter is now passed in and applied via a masterGain node
-function createDrum(ctx, type, freq, vol = 1) {
+let pattern = JSON.parse(JSON.stringify(DEFAULT_PATTERN));
+let bpm = 90;
+let vol = 0.8;
+let playing = false;
+let currentStep = -1;
+let intervalId = null;
+let stepCount = 0;
+let audioCtx = null;
+let tapTimes = [];
+
+// ── AUDIO ─────────────────────────────────────────────────────────────────────
+function getCtx() {
+  if (!audioCtx || audioCtx.state === 'closed') {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playDrum(type, freq) {
+  const ctx = getCtx();
   const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = vol;
+  master.connect(ctx.destination);
 
-  // Master gain for volume control — FIX: was bypassed before
-  const masterGain = ctx.createGain();
-  masterGain.gain.value = vol;
-  masterGain.connect(ctx.destination);
-
-  if (type === "kick") {
+  if (type === 'kick') {
     const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(masterGain);
-    osc.frequency.setValueAtTime(freq * 2.5, now);
-    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + 0.15);
-    gain.gain.setValueAtTime(1.2, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-    osc.start(now); osc.stop(now + 0.4);
+    const g = ctx.createGain();
+    osc.connect(g); g.connect(master);
+    osc.frequency.setValueAtTime(freq*2.5, now);
+    osc.frequency.exponentialRampToValueAtTime(freq*0.5, now+0.15);
+    g.gain.setValueAtTime(1.2, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now+0.4);
+    osc.start(now); osc.stop(now+0.4);
 
-  } else if (type === "snare") {
-    const gain = ctx.createGain();
-    gain.connect(masterGain);
+  } else if (type === 'snare') {
+    const g = ctx.createGain();
+    g.connect(master);
     const osc = ctx.createOscillator();
     const noise = ctx.createOscillator();
-    const noiseGain = ctx.createGain();
-    osc.connect(gain);
-    noise.connect(noiseGain);
-    noiseGain.connect(gain);
+    const ng = ctx.createGain();
+    osc.connect(g); noise.connect(ng); ng.connect(g);
     osc.frequency.value = freq;
-    noise.type = "sawtooth";
-    noise.frequency.value = freq * 3;
-    gain.gain.setValueAtTime(0.8, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-    noiseGain.gain.setValueAtTime(0.6, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-    osc.start(now); osc.stop(now + 0.2);
-    noise.start(now); noise.stop(now + 0.15);
+    noise.type = 'sawtooth'; noise.frequency.value = freq*3;
+    g.gain.setValueAtTime(0.8, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now+0.2);
+    ng.gain.setValueAtTime(0.6, now);
+    ng.gain.exponentialRampToValueAtTime(0.001, now+0.15);
+    osc.start(now); osc.stop(now+0.2);
+    noise.start(now); noise.stop(now+0.15);
 
-  } else if (type === "hihat") {
-    const bufferSize = ctx.sampleRate * 0.05;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-    const source = ctx.createBufferSource();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
-    source.buffer = buffer;
-    filter.type = "highpass";
-    filter.frequency.value = 8000;
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(masterGain);
-    gain.gain.setValueAtTime(0.6, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-    source.start(now);
+  } else if (type === 'hihat') {
+    const sz = ctx.sampleRate*0.05;
+    const buf = ctx.createBuffer(1, sz, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i=0;i<sz;i++) d[i]=Math.random()*2-1;
+    const src = ctx.createBufferSource();
+    const filt = ctx.createBiquadFilter();
+    const g = ctx.createGain();
+    src.buffer=buf; filt.type='highpass'; filt.frequency.value=8000;
+    src.connect(filt); filt.connect(g); g.connect(master);
+    g.gain.setValueAtTime(0.6,now);
+    g.gain.exponentialRampToValueAtTime(0.001,now+0.05);
+    src.start(now);
 
-  } else if (type === "clap") {
-    for (let i = 0; i < 3; i++) {
-      const bufferSize = ctx.sampleRate * 0.02;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let j = 0; j < bufferSize; j++) data[j] = Math.random() * 2 - 1;
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      const g = ctx.createGain();
-      source.connect(g);
-      g.connect(masterGain);
-      g.gain.setValueAtTime(0.5, now + i * 0.01);
-      g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.01 + 0.03);
-      source.start(now + i * 0.01);
+  } else if (type === 'clap') {
+    for (let i=0;i<3;i++) {
+      const sz=ctx.sampleRate*0.02;
+      const buf=ctx.createBuffer(1,sz,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let j=0;j<sz;j++) d[j]=Math.random()*2-1;
+      const src=ctx.createBufferSource();
+      src.buffer=buf;
+      const g=ctx.createGain();
+      src.connect(g); g.connect(master);
+      g.gain.setValueAtTime(0.5,now+i*0.01);
+      g.gain.exponentialRampToValueAtTime(0.001,now+i*0.01+0.03);
+      src.start(now+i*0.01);
     }
 
-  } else if (type === "perc") {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "triangle";
-    osc.connect(gain);
-    gain.connect(masterGain);
-    osc.frequency.setValueAtTime(freq * 2, now);
-    osc.frequency.exponentialRampToValueAtTime(freq * 0.3, now + 0.1);
-    gain.gain.setValueAtTime(0.9, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-    osc.start(now); osc.stop(now + 0.12);
+  } else if (type === 'perc') {
+    const osc=ctx.createOscillator();
+    const g=ctx.createGain();
+    osc.type='triangle'; osc.connect(g); g.connect(master);
+    osc.frequency.setValueAtTime(freq*2,now);
+    osc.frequency.exponentialRampToValueAtTime(freq*0.3,now+0.1);
+    g.gain.setValueAtTime(0.9,now);
+    g.gain.exponentialRampToValueAtTime(0.001,now+0.12);
+    osc.start(now); osc.stop(now+0.12);
 
-  } else if (type === "bass") {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.connect(gain);
-    gain.connect(masterGain);
-    osc.frequency.setValueAtTime(freq * 3, now);
-    osc.frequency.exponentialRampToValueAtTime(freq, now + 0.08);
-    gain.gain.setValueAtTime(1.4, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-    osc.start(now); osc.stop(now + 0.6);
+  } else if (type === 'bass') {
+    const osc=ctx.createOscillator();
+    const g=ctx.createGain();
+    osc.type='sine'; osc.connect(g); g.connect(master);
+    osc.frequency.setValueAtTime(freq*3,now);
+    osc.frequency.exponentialRampToValueAtTime(freq,now+0.08);
+    g.gain.setValueAtTime(1.4,now);
+    g.gain.exponentialRampToValueAtTime(0.001,now+0.6);
+    osc.start(now); osc.stop(now+0.6);
   }
 }
 
-// ── BPM Detector ─────────────────────────────────────────────────────────────
-async function detectBPM(audioBuffer) {
-  const data = audioBuffer.getChannelData(0);
-  const sampleRate = audioBuffer.sampleRate;
-  const windowSize = Math.floor(sampleRate * 0.01);
-  const energies = [];
-  for (let i = 0; i < data.length - windowSize; i += windowSize) {
-    let e = 0;
-    for (let j = 0; j < windowSize; j++) e += data[i + j] ** 2;
-    energies.push(e / windowSize);
-  }
-  const peaks = [];
-  const threshold = (energies.reduce((a, b) => a + b, 0) / energies.length) * 2;
-  for (let i = 1; i < energies.length - 1; i++) {
-    if (
-      energies[i] > threshold &&
-      energies[i] > energies[i - 1] &&
-      energies[i] > energies[i + 1]
-    ) {
-      peaks.push(i);
+// ── SEQUENCER ─────────────────────────────────────────────────────────────────
+function buildSequencer() {
+  const seq = document.getElementById('sequencer');
+  seq.innerHTML = '';
+
+  // Step numbers
+  const nums = document.createElement('div');
+  nums.className = 'seq-nums';
+  nums.innerHTML = '<div></div>' + Array(16).fill(0).map((_,i)=>
+    `<div class="seq-num" style="color:${i%4===0?'#FFD60A':'#444'};font-weight:${i%4===0?900:400};">${i+1}</div>`
+  ).join('');
+  seq.appendChild(nums);
+
+  PADS.forEach(pad => {
+    const row = document.createElement('div');
+    row.className = 'pad-row';
+
+    const lbl = document.createElement('button');
+    lbl.className = 'pad-label';
+    lbl.id = `lbl-${pad.id}`;
+    lbl.textContent = pad.label;
+    lbl.style.cssText = `background:${pad.color}22;border:1px solid ${pad.color}66;color:${pad.color};`;
+    lbl.onclick = () => clearPad(pad.id);
+    lbl.title = 'Click to clear';
+    row.appendChild(lbl);
+
+    for (let s=0; s<16; s++) {
+      const btn = document.createElement('button');
+      btn.className = 'step-btn';
+      btn.id = `step-${pad.id}-${s}`;
+      btn.onclick = () => toggleStep(pad.id, s);
+      updateStepBtn(btn, pad, s);
+      row.appendChild(btn);
     }
-  }
-  if (peaks.length < 2) return DEFAULT_BPM;
-  const intervals = [];
-  for (let i = 1; i < Math.min(peaks.length, 50); i++) {
-    intervals.push(((peaks[i] - peaks[i - 1]) * windowSize) / sampleRate);
-  }
-  const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-  const bpm = Math.round(60 / avgInterval);
-  return Math.max(60, Math.min(180, bpm));
+    seq.appendChild(row);
+  });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+function updateStepBtn(btn, pad, s) {
+  const isOn = pattern[pad.id][s] === 1;
+  const isCurrent = s === currentStep;
+  const isBeat = s % 4 === 0;
+  btn.style.background = isOn
+    ? (isCurrent ? '#fff' : pad.color)
+    : (isCurrent ? '#333' : isBeat ? '#1a1a1a' : '#141414');
+  btn.style.border = isOn
+    ? `1px solid ${pad.color}`
+    : `1px solid ${isBeat ? '#2a2a2a' : '#1e1e1e'}`;
+  btn.style.boxShadow = isOn && isCurrent ? `0 0 10px ${pad.color}` : 'none';
+}
 
-export default function BeatMaker() {
-  const [bpm, setBpm] = useState(DEFAULT_BPM);
-  const [pattern, setPattern] = useState(DEFAULT_PATTERN);
-  const [playing, setPlaying] = useState(false);
-  const [currentStep, setCurrentStep] = useState(-1);
-  const [ytUrl, setYtUrl] = useState("");
-  const [ytEmbedId, setYtEmbedId] = useState("");
-  const [uploadName, setUploadName] = useState("");
-  const [bpmDetecting, setBpmDetecting] = useState(false);
-  const [detectedBpm, setDetectedBpm] = useState(null);
-  const [activeTab, setActiveTab] = useState("beat");
-  const [volume, setVolume] = useState(80);
-  const [padFlash, setPadFlash] = useState({});
+function refreshStep(step) {
+  PADS.forEach(pad => {
+    const btn = document.getElementById(`step-${pad.id}-${step}`);
+    if (btn) updateStepBtn(btn, pad, step);
+  });
+}
 
-  const audioCtxRef = useRef(null);
-  const intervalRef = useRef(null);
-  const stepRef = useRef(0);
-  const patternRef = useRef(pattern);
-  const bpmRef = useRef(bpm);
-  const volumeRef = useRef(volume);
+function toggleStep(padId, step) {
+  pattern[padId][step] = pattern[padId][step] ? 0 : 1;
+  const pad = PADS.find(p=>p.id===padId);
+  const btn = document.getElementById(`step-${padId}-${step}`);
+  updateStepBtn(btn, pad, step);
+}
 
-  // FIX: tapBpm tap times stored in a ref so they survive re-renders
-  const tapTimesRef = useRef([]);
+function clearPad(padId) {
+  pattern[padId] = Array(16).fill(0);
+  const pad = PADS.find(p=>p.id===padId);
+  for (let s=0;s<16;s++) {
+    const btn = document.getElementById(`step-${padId}-${s}`);
+    updateStepBtn(btn, pad, s);
+  }
+}
 
-  useEffect(() => { patternRef.current = pattern; }, [pattern]);
-  useEffect(() => { bpmRef.current = bpm; }, [bpm]);
-  useEffect(() => { volumeRef.current = volume; }, [volume]);
+function randomize() {
+  PADS.forEach(pad => {
+    pattern[pad.id] = Array(16).fill(0).map(()=>Math.random()>0.75?1:0);
+  });
+  pattern.kick[0]=1; pattern.kick[8]=1;
+  pattern.snare[4]=1; pattern.snare[12]=1;
+  buildSequencer();
+}
 
-  const getCtx = useCallback(() => {
-    if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
-    return audioCtxRef.current;
-  }, []);
+function resetPattern() {
+  pattern = JSON.parse(JSON.stringify(DEFAULT_PATTERN));
+  buildSequencer();
+}
 
-  const fireStep = useCallback((step) => {
-    const ctx = getCtx();
-    const pat = patternRef.current;
-    // FIX: vol is now passed into createDrum so the volume slider actually works
-    const vol = volumeRef.current / 100;
-    const flashIds = [];
+// ── PLAYBACK ──────────────────────────────────────────────────────────────────
+function tick() {
+  const prev = currentStep;
+  currentStep = stepCount % 16;
+  stepCount++;
 
-    PADS.forEach(({ id, freq, type }) => {
-      if (pat[id][step]) {
-        createDrum(ctx, type, freq, vol);
-        flashIds.push(id);
+  if (prev >= 0) refreshStep(prev);
+  refreshStep(currentStep);
+
+  PADS.forEach(pad => {
+    if (pattern[pad.id][currentStep]) {
+      playDrum(pad.type, pad.freq);
+      // Flash label
+      const lbl = document.getElementById(`lbl-${pad.id}`);
+      if (lbl) {
+        lbl.style.background = pad.color;
+        lbl.style.color = '#fff';
+        lbl.style.boxShadow = `0 0 12px ${pad.color}`;
+        setTimeout(()=>{
+          lbl.style.background = `${pad.color}22`;
+          lbl.style.color = pad.color;
+          lbl.style.boxShadow = 'none';
+        }, 80);
       }
-    });
-
-    if (flashIds.length > 0) {
-      setPadFlash((prev) => {
-        const next = { ...prev };
-        flashIds.forEach((id) => (next[id] = true));
-        return next;
-      });
-      setTimeout(() => {
-        setPadFlash((prev) => {
-          const next = { ...prev };
-          flashIds.forEach((id) => (next[id] = false));
-          return next;
-        });
-      }, 80);
     }
-  }, [getCtx]);
-
-  const startStop = useCallback(() => {
-    if (playing) {
-      clearInterval(intervalRef.current);
-      setPlaying(false);
-      setCurrentStep(-1);
-      stepRef.current = 0;
-    } else {
-      getCtx();
-      setPlaying(true);
-      stepRef.current = 0;
-      const tick = () => {
-        const step = stepRef.current % STEPS;
-        setCurrentStep(step);
-        fireStep(step);
-        stepRef.current++;
-      };
-      tick();
-      intervalRef.current = setInterval(tick, (60000 / bpmRef.current) / 4);
-    }
-  }, [playing, fireStep, getCtx]);
-
-  // Restart interval when BPM changes while playing
-  useEffect(() => {
-    if (playing) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        const step = stepRef.current % STEPS;
-        setCurrentStep(step);
-        fireStep(step);
-        stepRef.current++;
-      }, (60000 / bpm) / 4);
-    }
-  }, [bpm, playing, fireStep]);
-
-  useEffect(() => () => clearInterval(intervalRef.current), []);
-
-  const toggleStep = (padId, step) => {
-    setPattern((prev) => ({
-      ...prev,
-      [padId]: prev[padId].map((v, i) => (i === step ? (v ? 0 : 1) : v)),
-    }));
-  };
-
-  const clearPad = (padId) => {
-    setPattern((prev) => ({ ...prev, [padId]: Array(STEPS).fill(0) }));
-  };
-
-  const extractYtId = (url) => {
-    const match = url.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/);
-    return match ? match[1] : null;
-  };
-
-  const loadYt = () => {
-    const id = extractYtId(ytUrl);
-    if (id) setYtEmbedId(id);
-  };
-
-  const handleAudioUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setUploadName(file.name);
-    setBpmDetecting(true);
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const ctx = new AudioContext();
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-      const detected = await detectBPM(audioBuffer);
-      setDetectedBpm(detected);
-      setBpm(detected);
-      ctx.close();
-    } catch {
-      setDetectedBpm(null);
-    }
-    setBpmDetecting(false);
-  };
-
-  const randomize = () => {
-    const newPat = {};
-    PADS.forEach(({ id }) => {
-      newPat[id] = Array(STEPS).fill(0).map(() => (Math.random() > 0.75 ? 1 : 0));
-    });
-    newPat.kick[0] = 1; newPat.kick[8] = 1;
-    newPat.snare[4] = 1; newPat.snare[12] = 1;
-    setPattern(newPat);
-  };
-
-  const resetPattern = () => setPattern(DEFAULT_PATTERN);
-
-  // FIX: tapBpm now uses a ref for tap history — survives re-renders correctly
-  const tapBpm = useCallback(() => {
-    const now = Date.now();
-    tapTimesRef.current.push(now);
-    tapTimesRef.current = tapTimesRef.current
-      .filter((t) => now - t < 3000)
-      .slice(-8);
-    if (tapTimesRef.current.length >= 2) {
-      const diffs = tapTimesRef.current
-        .slice(1)
-        .map((t, i) => t - tapTimesRef.current[i]);
-      const avg = diffs.reduce((a, b) => a + b, 0) / diffs.length;
-      setBpm(Math.round(Math.max(60, Math.min(180, 60000 / avg))));
-    }
-  }, []);
-
-  return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#0a0a0f",
-      color: "#f0f0f0",
-      fontFamily: "'Courier New', monospace",
-      padding: "0",
-      overflowX: "hidden",
-    }}>
-      {/* ── HEADER ── */}
-      <div style={{
-        background: "linear-gradient(135deg, #1a0a2e 0%, #0d1117 50%, #0a1a0d 100%)",
-        padding: "20px 24px 0",
-        borderBottom: "1px solid #222",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{
-            width: 40, height: 40,
-            background: "linear-gradient(135deg, #BF5AF2, #FF3B30)",
-            borderRadius: 8,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 20,
-          }}>🎤</div>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: 3, color: "#BF5AF2" }}>
-              SAINT BEV
-            </div>
-            <div style={{ fontSize: 10, letterSpacing: 4, color: "#666", marginTop: -2 }}>
-              SAMPLE BEAT STUDIO
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 0 }}>
-          {[
-            { id: "beat",    label: "🥁 BEAT"     },
-            { id: "youtube", label: "▶ YOUTUBE"   },
-            { id: "upload",  label: "🎵 MY TRACK" },
-          ].map((tab) => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-              background: activeTab === tab.id ? "#BF5AF2" : "transparent",
-              color: activeTab === tab.id ? "#fff" : "#666",
-              border: "none",
-              padding: "8px 18px",
-              fontSize: 11,
-              fontFamily: "'Courier New', monospace",
-              fontWeight: 700,
-              letterSpacing: 2,
-              cursor: "pointer",
-              borderRadius: "6px 6px 0 0",
-              transition: "all 0.2s",
-            }}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ padding: "20px 16px" }}>
-
-        {/* ── YOUTUBE TAB ── */}
-        {activeTab === "youtube" && (
-          <div>
-            <div style={{ marginBottom: 16, color: "#888", fontSize: 12, lineHeight: 1.6 }}>
-              Paste a YouTube link.<br />
-              Play the song alongside your beat.<br />
-              <span style={{ color: "#FF9500" }}>⚠ Can't rip audio — but you can hear it + rap over your beat.</span>
-            </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <input
-                value={ytUrl}
-                onChange={(e) => setYtUrl(e.target.value)}
-                placeholder="https://youtube.com/watch?v=..."
-                style={{
-                  flex: 1, background: "#111", border: "1px solid #333",
-                  color: "#f0f0f0", padding: "10px 12px", borderRadius: 6,
-                  fontFamily: "'Courier New', monospace", fontSize: 12,
-                  outline: "none",
-                }}
-              />
-              <button onClick={loadYt} style={{
-                background: "#FF3B30", border: "none", color: "#fff",
-                padding: "10px 16px", borderRadius: 6, cursor: "pointer",
-                fontWeight: 700, fontSize: 12, letterSpacing: 1,
-                fontFamily: "'Courier New', monospace",
-              }}>LOAD</button>
-            </div>
-            {ytEmbedId ? (
-              <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid #333" }}>
-                <iframe
-                  width="100%" height="240"
-                  src={`https://www.youtube.com/embed/${ytEmbedId}?rel=0`}
-                  title="YouTube sample"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  style={{ display: "block" }}
-                />
-              </div>
-            ) : (
-              <div style={{
-                background: "#111", border: "1px dashed #333", borderRadius: 10,
-                height: 160, display: "flex", alignItems: "center",
-                justifyContent: "center", color: "#444", fontSize: 13,
-              }}>
-                ▶ Paste a YouTube link above
-              </div>
-            )}
-            <div style={{ marginTop: 12, color: "#666", fontSize: 11, lineHeight: 1.8 }}>
-              💡 TIP: Play the YouTube video, then tap the BEAT tab and hit PLAY to run the beat alongside the song.
-            </div>
-          </div>
-        )}
-
-        {/* ── UPLOAD TAB ── */}
-        {activeTab === "upload" && (
-          <div>
-            <div style={{ marginBottom: 16, color: "#888", fontSize: 12, lineHeight: 1.6 }}>
-              Upload one of your tracks.<br />
-              It'll detect the BPM so the beat matches your flow.
-            </div>
-            <label style={{
-              display: "block",
-              background: "linear-gradient(135deg, #1a1a2e, #111)",
-              border: "2px dashed #BF5AF2",
-              borderRadius: 12,
-              padding: "30px 20px",
-              textAlign: "center",
-              cursor: "pointer",
-            }}>
-              <input type="file" accept="audio/*" onChange={handleAudioUpload} style={{ display: "none" }} />
-              <div style={{ fontSize: 32, marginBottom: 8 }}>🎵</div>
-              <div style={{ color: "#BF5AF2", fontWeight: 700, letterSpacing: 2, fontSize: 13 }}>
-                {uploadName || "TAP TO UPLOAD YOUR TRACK"}
-              </div>
-              <div style={{ color: "#555", fontSize: 11, marginTop: 4 }}>
-                MP3, WAV, M4A supported
-              </div>
-            </label>
-
-            {bpmDetecting && (
-              <div style={{
-                marginTop: 16, background: "#111", borderRadius: 8, padding: 16,
-                textAlign: "center", color: "#BF5AF2", fontSize: 13, letterSpacing: 2,
-              }}>
-                ⏳ ANALYZING YOUR FLOW...
-              </div>
-            )}
-
-            {detectedBpm && !bpmDetecting && (
-              <div style={{
-                marginTop: 16,
-                background: "linear-gradient(135deg, #1a0a2e, #0a1a0d)",
-                border: "1px solid #BF5AF2",
-                borderRadius: 10,
-                padding: 16,
-              }}>
-                <div style={{ color: "#888", fontSize: 11, letterSpacing: 2, marginBottom: 4 }}>
-                  DETECTED TEMPO
-                </div>
-                <div style={{ fontSize: 40, fontWeight: 900, color: "#BF5AF2", letterSpacing: 2 }}>
-                  {detectedBpm} <span style={{ fontSize: 16, color: "#666" }}>BPM</span>
-                </div>
-                <div style={{ color: "#30D158", fontSize: 12, marginTop: 4 }}>
-                  ✓ Beat automatically set to match
-                </div>
-                <div style={{ color: "#666", fontSize: 11, marginTop: 8 }}>
-                  Go to BEAT tab and hit PLAY — the groove is locked to your flow.
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── BEAT TAB ── */}
-        {activeTab === "beat" && (
-          <div>
-            {/* Transport + BPM */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: 12,
-              marginBottom: 20,
-              background: "#111",
-              borderRadius: 10,
-              padding: "12px 16px",
-              border: "1px solid #222",
-            }}>
-              <button onClick={startStop} style={{
-                width: 52, height: 52,
-                background: playing
-                  ? "linear-gradient(135deg, #FF3B30, #FF9500)"
-                  : "linear-gradient(135deg, #30D158, #64D2FF)",
-                border: "none", borderRadius: 10, fontSize: 22,
-                cursor: "pointer", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: playing ? "0 0 20px #FF3B3066" : "0 0 20px #30D15866",
-                transition: "all 0.2s",
-              }}>
-                {playing ? "⏹" : "▶"}
-              </button>
-
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  display: "flex", alignItems: "center",
-                  justifyContent: "space-between", marginBottom: 4,
-                }}>
-                  <span style={{ fontSize: 10, color: "#666", letterSpacing: 2 }}>BPM</span>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: "#FFD60A" }}>{bpm}</span>
-                </div>
-                <input
-                  type="range" min="60" max="180" value={bpm}
-                  onChange={(e) => setBpm(Number(e.target.value))}
-                  style={{ width: "100%", accentColor: "#FFD60A" }}
-                />
-              </div>
-
-              <button onClick={tapBpm} style={{
-                background: "#222", border: "1px solid #444",
-                color: "#FFD60A", padding: "8px 12px",
-                borderRadius: 8, cursor: "pointer", fontSize: 10,
-                fontFamily: "'Courier New', monospace", fontWeight: 700,
-                letterSpacing: 1, flexShrink: 0,
-              }}>TAP</button>
-            </div>
-
-            {/* Volume — FIX: now actually controls drum volume */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: 10,
-              marginBottom: 16, padding: "0 4px",
-            }}>
-              <span style={{ fontSize: 10, color: "#666", letterSpacing: 2, flexShrink: 0 }}>VOL</span>
-              <input
-                type="range" min="0" max="100" value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
-                style={{ flex: 1, accentColor: "#BF5AF2" }}
-              />
-              <span style={{ fontSize: 12, color: "#BF5AF2", width: 30, textAlign: "right" }}>{volume}</span>
-            </div>
-
-            {/* Step Sequencer */}
-            <div style={{ marginBottom: 16 }}>
-              {/* Step numbers */}
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "52px repeat(16, 1fr)",
-                gap: 3,
-                marginBottom: 4,
-              }}>
-                <div />
-                {Array(STEPS).fill(0).map((_, i) => (
-                  <div key={i} style={{
-                    textAlign: "center", fontSize: 8,
-                    color: i % 4 === 0 ? "#FFD60A" : "#444",
-                    fontWeight: i % 4 === 0 ? 900 : 400,
-                  }}>{i + 1}</div>
-                ))}
-              </div>
-
-              {PADS.map(({ id, label, color }) => (
-                <div key={id} style={{
-                  display: "grid",
-                  gridTemplateColumns: "52px repeat(16, 1fr)",
-                  gap: 3,
-                  marginBottom: 4,
-                }}>
-                  {/* Pad label — click to clear */}
-                  <button
-                    onClick={() => clearPad(id)}
-                    title="Click to clear"
-                    style={{
-                      background: padFlash[id] ? color : `${color}22`,
-                      border: `1px solid ${color}66`,
-                      color: padFlash[id] ? "#fff" : color,
-                      borderRadius: 4,
-                      fontSize: 8, fontWeight: 900,
-                      letterSpacing: 0.5,
-                      cursor: "pointer",
-                      fontFamily: "'Courier New', monospace",
-                      transition: "all 0.08s",
-                      boxShadow: padFlash[id] ? `0 0 12px ${color}` : "none",
-                      padding: 0,
-                    }}>
-                    {label}
-                  </button>
-
-                  {/* Steps */}
-                  {pattern[id].map((active, step) => {
-                    const isCurrentStep = step === currentStep;
-                    const isOn = active === 1;
-                    const isBeat = step % 4 === 0;
-                    return (
-                      <button
-                        key={step}
-                        onClick={() => toggleStep(id, step)}
-                        style={{
-                          height: 32,
-                          background: isOn
-                            ? isCurrentStep ? "#fff" : color
-                            : isCurrentStep ? "#333" : isBeat ? "#1a1a1a" : "#141414",
-                          border: isOn
-                            ? `1px solid ${color}`
-                            : `1px solid ${isBeat ? "#2a2a2a" : "#1e1e1e"}`,
-                          borderRadius: 3,
-                          cursor: "pointer",
-                          transition: "all 0.06s",
-                          boxShadow: isOn && isCurrentStep ? `0 0 10px ${color}` : "none",
-                          padding: 0,
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-
-            {/* Action buttons */}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={randomize} style={{
-                flex: 1,
-                background: "#1a1a2e", border: "1px solid #333",
-                color: "#64D2FF", padding: "10px 0",
-                borderRadius: 8, cursor: "pointer",
-                fontSize: 11, fontWeight: 700, letterSpacing: 2,
-                fontFamily: "'Courier New', monospace",
-              }}>🎲 RANDOMIZE</button>
-              <button onClick={resetPattern} style={{
-                flex: 1,
-                background: "#1a1a2e", border: "1px solid #333",
-                color: "#FF9500", padding: "10px 0",
-                borderRadius: 8, cursor: "pointer",
-                fontSize: 11, fontWeight: 700, letterSpacing: 2,
-                fontFamily: "'Courier New', monospace",
-              }}>↺ RESET</button>
-            </div>
-
-            {playing && (
-              <div style={{
-                marginTop: 12,
-                background: "#0d1a0d",
-                border: "1px solid #30D158",
-                borderRadius: 8,
-                padding: "8px 12px",
-                fontSize: 11,
-                color: "#30D158",
-                letterSpacing: 1,
-                textAlign: "center",
-              }}>
-                🎤 BEAT RUNNING — START RAPPING
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  });
 }
+
+function togglePlay() {
+  if (playing) {
+    clearInterval(intervalId);
+    playing = false;
+    const prev = currentStep;
+    currentStep = -1;
+    if (prev>=0) refreshStep(prev);
+    stepCount = 0;
+    document.getElementById('playBtn').className = 'play-btn stopped';
+    document.getElementById('playBtn').textContent = '▶';
+    document.getElementById('runningMsg').style.display = 'none';
+  } else {
+    getCtx();
+    playing = true;
+    stepCount = 0;
+    document.getElementById('playBtn').className = 'play-btn playing';
+    document.getElementById('playBtn').textContent = '⏹';
+    document.getElementById('runningMsg').style.display = 'block';
+    tick();
+    intervalId = setInterval(tick, (60000/bpm)/4);
+  }
+}
+
+// ── BPM / VOL ─────────────────────────────────────────────────────────────────
+function setBPM(v) {
+  bpm = Number(v);
+  document.getElementById('bpmVal').textContent = bpm;
+  if (playing) {
+    clearInterval(intervalId);
+    intervalId = setInterval(tick, (60000/bpm)/4);
+  }
+}
+
+function setVol(v) {
+  vol = Number(v)/100;
+  document.getElementById('volVal').textContent = v;
+}
+
+function tapBPM() {
+  const now = Date.now();
+  tapTimes.push(now);
+  tapTimes = tapTimes.filter(t=>now-t<3000).slice(-8);
+  if (tapTimes.length >= 2) {
+    const diffs = tapTimes.slice(1).map((t,i)=>t-tapTimes[i]);
+    const avg = diffs.reduce((a,b)=>a+b,0)/diffs.length;
+    const newBpm = Math.round(Math.max(60,Math.min(180,60000/avg)));
+    document.getElementById('bpmSlider').value = newBpm;
+    setBPM(newBpm);
+  }
+}
+
+// ── YOUTUBE ───────────────────────────────────────────────────────────────────
+function loadYT() {
+  const url = document.getElementById('ytInput').value;
+  const match = url.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/);
+  if (match) {
+    document.getElementById('ytContainer').innerHTML =
+      `<iframe width="100%" height="240"
+        src="https://www.youtube.com/embed/${match[1]}?rel=0"
+        frameborder="0" allowfullscreen style="display:block;"></iframe>`;
+    document.getElementById('ytContainer').className = 'yt-frame';
+  }
+}
+
+// ── UPLOAD / BPM DETECT ───────────────────────────────────────────────────────
+async function handleUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('uploadName').textContent = file.name;
+  document.getElementById('detectingMsg').style.display = 'block';
+  document.getElementById('bpmResult').style.display = 'none';
+  try {
+    const ab = await file.arrayBuffer();
+    const ctx = new AudioContext();
+    const audioBuf = await ctx.decodeAudioData(ab);
+    const detected = await detectBPM(audioBuf);
+    ctx.close();
+    document.getElementById('detectedBpm').textContent = detected;
+    document.getElementById('bpmResult').style.display = 'block';
+    document.getElementById('bpmSlider').value = detected;
+    setBPM(detected);
+  } catch(err) {
+    document.getElementById('uploadName').textContent = 'Could not detect BPM';
+  }
+  document.getElementById('detectingMsg').style.display = 'none';
+}
+
+async function detectBPM(audioBuf) {
+  const data = audioBuf.getChannelData(0);
+  const sr = audioBuf.sampleRate;
+  const ws = Math.floor(sr*0.01);
+  const energies = [];
+  for (let i=0;i<data.length-ws;i+=ws) {
+    let e=0; for(let j=0;j<ws;j++) e+=data[i+j]**2;
+    energies.push(e/ws);
+  }
+  const avg = energies.reduce((a,b)=>a+b,0)/energies.length;
+  const threshold = avg*2;
+  const peaks = [];
+  for (let i=1;i<energies.length-1;i++) {
+    if (energies[i]>threshold && energies[i]>energies[i-1] && energies[i]>energies[i+1]) peaks.push(i);
+  }
+  if (peaks.length<2) return 90;
+  const intervals = [];
+  for (let i=1;i<Math.min(peaks.length,50);i++) intervals.push(((peaks[i]-peaks[i-1])*ws)/sr);
+  const avgInt = intervals.reduce((a,b)=>a+b,0)/intervals.length;
+  return Math.round(Math.max(60,Math.min(180,60/avgInt)));
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(`tab-${id}`).classList.add('active');
+  const tabs = ['beat','youtube','upload'];
+  document.querySelectorAll('.tab')[tabs.indexOf(id)].classList.add('active');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+buildSequencer();
+</script>
+</body>
+</html>
